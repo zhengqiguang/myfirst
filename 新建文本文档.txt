@@ -1,0 +1,409 @@
+package myML;
+
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.util.Scanner;
+
+
+class LogisticRegressionHypothseis{
+	private Matrix x;
+	private Vector y;
+	public Matrix xTest;
+	public Vector yTest;
+	//private double errorSum;
+	private double learningRate = 0.001;
+	private double errorMin = 0.01;
+	private long pocketTimes=2000;
+	private Vector w;
+	
+	LogisticRegressionHypothseis(Matrix x, Vector y){
+		this.x = x;
+		this.y = y;
+		w = new Vector(x.getColumnNumber());
+		for(int i = 0 ; i < x.getRowNumber() ; i++){
+			x.setValueOf(i , 0 , 1);
+		}
+	}
+	LogisticRegressionHypothseis(int n , int d , String filePath) throws FileNotFoundException{
+		x=new Matrix(n , d + 1);
+		y=new Vector(n);
+		w = new Vector(x.getColumnNumber());
+		for(int i = 0 ; i < x.getRowNumber() ; i++){
+			x.setValueOf(i , 0 , 1);
+		}
+		Scanner inputFile = new Scanner(new File(filePath));
+		for(int r = 0 ; r < x.getRowNumber() ; r++){
+			for(int c = 1 ; c < x.getColumnNumber() ; c++){
+				x.setValueOf(r , c , inputFile.nextDouble());
+			}
+			y.setValueOf(r , inputFile.nextDouble());
+		}
+		inputFile.close();
+	}
+	LogisticRegressionHypothseis(Vector w){
+		this.w = w;
+	}
+	private double sigmoidFunction(double s){
+		return 1 / (1 + Math.exp(-s));
+	}
+	private Vector gradOfOneError(int n)
+	//This function calculate gradient of one error(x[n])
+	//often used for online learning (with SGD)
+	{
+		return x.getRowVector(n).multiplyBy(y.getValueOf(n)).multiplyBy(
+					-1 * sigmoidFunction(
+						-1 * w.multiplyBy(x.getRowVector(n)) * y.getValueOf(n)
+						)
+				);
+	}
+	private Vector gradOfError()
+	//This function calculate gradient of every data in data set
+	{
+		int N = x.getRowNumber();
+		Vector sum=new Vector(x.getColumnNumber());
+		for(int n = 0 ; n < N ; n++)
+		{
+			sum.plusBy(gradOfOneError(n));
+		}
+		//System.out.println("grad of error: ");
+		//sum.dividedBy(N).printVector();
+		return sum.dividedBy(N);	
+	}
+	private Vector updateWBy(Vector gradOfError){
+		w.plusBy
+		(
+				gradOfError.multiplyBy(-learningRate)
+				);
+		//System.out.print("w updated: ");
+		//w.printVector();
+		return w;
+	}
+	
+	public Vector trainingFunction(){
+		long testTimes = pocketTimes;
+		while(testTimes-- > 0){
+		//while(true){
+			this.updateWBy(this.gradOfError());
+			//if(this.gradOfError().getNorm()<errorMin)
+				//return w;
+		}
+		return w;
+	}
+	public Vector trainingFunction_SGD(){
+		/**Stochastic Gradient Descent*/
+		long testTimes = pocketTimes;
+		int t = 0;
+		while(testTimes-- > 0){
+		//while(true){
+			//this.updateWBy(this.gradOfOneError((int)(Math.random()*y.getDimension())));
+			this.updateWBy(this.gradOfOneError(t++));
+			if(t == x.getRowNumber())t = 0;
+			//if(this.gradOfError().getNorm()<errorMin)
+				//return w;
+		}
+		return w;
+	}
+	public int testZeroOneError(Vector x,double y){
+		/**return 1 when error happens*/
+		if(w.multiplyBy(x) * y >= 0)
+			return 0;
+		else return 1;
+	}
+	public double hypothesis(Vector x){
+		return sigmoidFunction(w.multiplyBy(x));
+	}
+	public void initializeTestDateSet(int n , String filePath) throws FileNotFoundException{
+		xTest=new Matrix(n , x.getColumnNumber());
+		yTest=new Vector(n);
+		for(int i = 0 ; i < xTest.getRowNumber() ; i++){
+			xTest.setValueOf(i , 0 , 1);
+		}
+		Scanner inputFile = new Scanner(new File(filePath));
+		for(int r = 0 ; r < xTest.getRowNumber() ; r++){
+			for(int c = 1 ; c < xTest.getColumnNumber() ; c++){
+				xTest.setValueOf(r , c , inputFile.nextDouble());
+			}
+			yTest.setValueOf(r , inputFile.nextDouble());
+		}
+		inputFile.close();
+		
+		
+		
+	}
+
+	public Vector getW(){
+		return w;
+	}
+	public void setLearningRate(double l){
+
+		this.learningRate = l;
+	}
+	public void setPocketTimes(long t){
+		this.pocketTimes=t;
+	}
+	public void setErrorMin(double m){
+		this.errorMin = m;
+	}
+
+}
+
+
+class Vector {
+	private double[] value;
+	private int dimension;
+	Vector(int dimension){
+		value = new double[dimension];
+		this.dimension = dimension;
+	}
+	Vector(){
+		this(1);
+	}
+	public int getDimension(){
+		return this.dimension;
+	}
+	public void setValue(){
+		Scanner input = new Scanner(System.in);
+		System.out.println("input "+this.dimension+" value of "+this.toString());
+		for(int i = 0 ; i < this.dimension ; i++){
+			this.value[i]=input.nextDouble();
+		}
+		input.close();
+		//System.out.println("Value set!");
+	}
+	void setValueOf(int p , double value){
+		this.value[p] = value;
+	}
+	double getValueOf(int p){
+		return value[p];
+	}
+	public void printVector(){
+		System.out.println(this.toString());
+		for(int i = 0 ; i < this.dimension ; i++){
+			System.out.println("    "+this.value[i]);
+		}
+		//System.out.println("printing vector done");
+	}
+	double getNorm(){
+		double res = 1;
+		for(int i = 0 ; i < dimension ; i++){
+			res *= this.value[i];
+		}
+		return res;
+	}
+	public Vector multiplyBy(double x){
+		Vector ans=new Vector(this.dimension);
+		for(int i = 0 ; i < this.dimension ; i++){
+			ans.value[i] = this.value[i] * x;
+		}
+		return ans;
+	}
+	public double multiplyBy(Vector x){
+		double ans = 0;
+		/*
+		if(this.dimension!=x.dimension){
+			System.out.println("vector multipy error!");
+		}
+		*/
+		for(int i = 0 ; i < this.dimension ; i++){
+			ans += this.value[i] * x.value[i];
+		}
+		return ans;
+	}
+	Vector plusBy(Vector v){
+		if(this.getDimension() != v.getDimension()){
+			System.out.println("error in Vector plus");
+			return null;
+		}
+		for(int i = 0 ; i < this.dimension ; i++){
+			this.setValueOf(i, this.getValueOf(i) + v.getValueOf(i));
+		}
+		return this;
+	}
+	Vector dividedBy(double d){
+		if(d == 0){
+			System.out.println("error in Vector divide");
+			return null;
+		}
+		for(int i = 0 ; i < this.dimension ; i++){
+			this.setValueOf(i , this.getValueOf(i) / d);
+		}
+		return this;
+	}
+	boolean isZero(){
+		for(int i=0;i<this.getDimension();i++){
+			if(this.getValueOf(i)!=0)
+				return false;
+		}
+		return true;
+	}
+}
+
+class Matrix{
+	private double[][] m;
+	private int numberOfRow;
+	private int numberOfColumn;
+	Matrix(int numberOfRow,int numberOfColumn){
+		this.numberOfRow=numberOfRow;
+		this.numberOfColumn=numberOfColumn;
+		m=new double[numberOfRow][numberOfColumn];
+	}
+	Matrix(){
+		this(1,1);
+	}
+	void printMatrix(){
+		for(int r=0;r<numberOfRow;r++){
+			for(int c=0;c<numberOfColumn;c++){
+				System.out.print(m[r][c]+"    ");
+			}
+			System.out.println();
+		}
+	}
+	void setMatrix(){
+		Scanner input=new Scanner(System.in);
+		for(int r=0;r<this.numberOfRow;r++){
+			System.out.println("enter row "+(r+1)+" :");
+			for(int c=0;c<this.numberOfColumn;c++){
+				m[r][c]=input.nextDouble();
+			}
+		}
+	}
+	void setValueOf(int r, int c,double v){
+		m[r][c]=v;
+	}
+	
+	
+	void setMatrixFromFile(String location) throws FileNotFoundException{
+		Scanner input=new Scanner(new File(location));
+		for(int l=0;l<this.numberOfRow;l++){
+			for(int d=0;d<this.numberOfColumn;d++){
+				m[l][d]=input.nextDouble();
+			}
+		}
+		input.close();
+	}
+	void setMatrixFromFile() throws FileNotFoundException{
+		System.out.println("enter file location:");
+		Scanner inP=new Scanner(System.in);
+		String location=inP.nextLine();
+		this.setMatrixFromFile(location);
+	}
+	
+	Matrix transpose(){
+		Matrix t=new Matrix(numberOfColumn,numberOfRow);
+		for(int r=0;r<this.numberOfRow;r++){
+			System.out.println("enter row "+r+" :");
+			for(int c=0;c<this.numberOfColumn;c++){
+				t.m[c][r]=m[r][c];
+			}
+		}
+		return t;
+	}
+	Matrix product(Matrix left,Matrix right){
+		Matrix res=new Matrix(left.numberOfRow,right.numberOfColumn);
+		for(int r=0;r<left.numberOfRow;r++){
+			for(int c=0;c<right.numberOfColumn;c++){
+				for(int p=0;p<left.numberOfColumn;p++){
+					res.m[r][c]+=left.m[r][p]*right.m[p][c];
+				}
+			}
+		}
+		return res;
+		
+	}
+	Matrix connectUnitMatrixOnTheRight(){
+	Matrix ans=new Matrix(numberOfRow,numberOfColumn+numberOfRow);
+		for(int i=0;i<numberOfRow;i++){
+			for(int j=0;j<numberOfColumn;j++){
+				ans.m[i][j]=m[i][j];
+			}
+			ans.m[i][numberOfColumn+i]=1;
+		}
+		return ans;
+	}
+	Matrix abandonUnitMatrixOnTheLeft(){
+		Matrix ans=new Matrix(numberOfRow,numberOfColumn-numberOfRow);
+		for(int i=0;i<ans.numberOfRow;i++){
+			for(int j=0;j<ans.numberOfColumn;j++){
+				ans.m[i][j]=m[i][j+ans.numberOfColumn];
+			}
+		}
+		return ans;
+		
+	}
+	Matrix toUnitMatrix(){
+		Matrix ans=new Matrix(this.numberOfRow,this.numberOfColumn);
+		int n=numberOfRow;
+		double k1;
+		double k2;
+		ans.getCopyFrom(this);
+		for(int j=0;j<n;j++){
+			k1=ans.m[j][j];
+			for(int c=0;c<this.numberOfColumn;c++){
+				ans.m[j][c]/=k1;
+			}
+			for(int i=0;i<n;i++){
+				if(i==j)continue;
+				k2=ans.m[i][j];
+				for(int c=0;c<this.numberOfColumn;c++){
+					ans.m[i][c]-=k2*ans.m[j][c];
+				}
+			}
+		}
+		return ans;
+	}
+	Matrix inverse(){
+		if(numberOfColumn!=numberOfRow){
+			System.out.println("inverse error!");
+			return null;
+		}
+		return this.connectUnitMatrixOnTheRight().toUnitMatrix().abandonUnitMatrixOnTheLeft();
+	}
+	Matrix multiplyBy(Matrix m){
+		if(this.getColumnNumber()!=m.getRowNumber())
+			return null;
+		Matrix ans=new Matrix(this.getRowNumber() , m.getColumnNumber());
+		for(int i = 0;i < this.getRowNumber() ; i++){
+			for(int j = 0 ; j<m.getColumnNumber() ; j++){
+				for(int k = 0 ; k < this.getColumnNumber() ; k++){
+					ans.m[i][j] += this.m[i][k] * m.m[k][j];
+				}
+			}
+		}
+		return ans;
+	}
+
+	void getCopyFrom(Matrix s){
+		//Matrix d=new Matrix(numberOfRow,numberOfColumn);
+		for(int r=0;r<numberOfRow;r++){
+			for(int c=0;c<numberOfColumn;c++){
+				this.m[r][c]=s.m[r][c];
+			}
+		}
+	}
+	
+	double getValueOf(int r, int c){
+		return this.m[r][c];
+	}
+
+	int getColumnNumber(){
+		return numberOfColumn;
+	}
+	int getRowNumber(){
+		return numberOfRow;
+	}
+	Vector getRowVector(int r){
+		Vector v=new Vector(this.numberOfColumn);
+		//System.out.print(v.getDimension());
+		for(int i=0;i<v.getDimension();i++){
+			v.setValueOf(i, this.getValueOf(r, i));
+		}
+		return v;
+	}
+	Vector getColumnVector(int c){
+		Vector v=new Vector(this.numberOfRow);
+			for(int i=0;i<v.getDimension();i++){
+				v.setValueOf(i, this.getValueOf(i, c));
+			}
+			return v;
+	}
+}
